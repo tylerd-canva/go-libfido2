@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keys-pub/go-libfido2"
+	"github.com/mskonovalov/go-libfido2"
 	"github.com/stretchr/testify/require"
 )
 
