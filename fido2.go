@@ -617,9 +617,27 @@ type AssertionOpts struct {
 func (d *Device) Assertion(
 	rpID string,
 	clientDataHash []byte,
-	credentialID []byte,
+	credentialIDs [][]byte,
 	pin string,
 	opts *AssertionOpts) (*Assertion, error) {
+
+	dev, err := open(d.path)
+	if err != nil {
+		return nil, err
+	}
+	defer close(dev)
+
+	return d.assertionInternal(dev, rpID, clientDataHash, credentialIDs, pin, opts, err)
+}
+
+func (d *Device) assertionInternal(
+	dev *C.fido_dev_t,
+	rpID string,
+	clientDataHash []byte,
+	credentialIDs [][]byte,
+	pin string,
+	opts *AssertionOpts,
+	err error) (*Assertion, error) {
 
 	if opts == nil {
 		opts = &AssertionOpts{}
@@ -627,12 +645,6 @@ func (d *Device) Assertion(
 	if rpID == "" {
 		return nil, errors.Errorf("no rpID specified")
 	}
-
-	dev, err := open(d.path)
-	if err != nil {
-		return nil, err
-	}
-	defer close(dev)
 
 	cAssert := C.fido_assert_new()
 	defer C.fido_assert_free(&cAssert)
@@ -643,9 +655,12 @@ func (d *Device) Assertion(
 	if cErr := C.fido_assert_set_clientdata_hash(cAssert, cBytes(clientDataHash), cLen(clientDataHash)); cErr != C.FIDO_OK {
 		return nil, errors.Wrapf(errFromCode(cErr), "failed to set client data hash")
 	}
-	if credentialID != nil {
-		if cErr := C.fido_assert_allow_cred(cAssert, cBytes(credentialID), cLen(credentialID)); cErr != C.FIDO_OK {
-			return nil, errors.Wrapf(errFromCode(cErr), "failed to set allowed credentials")
+	if credentialIDs != nil {
+		for i := 0; i < len(credentialIDs); i++ {
+			credentialID := credentialIDs[i]
+			if cErr := C.fido_assert_allow_cred(cAssert, cBytes(credentialID), cLen(credentialID)); cErr != C.FIDO_OK {
+				return nil, errors.Wrapf(errFromCode(cErr), "failed to set allowed credentials")
+			}
 		}
 	}
 	if exts := extensionsInt(opts.Extensions); exts > 0 {
@@ -715,6 +730,28 @@ func (d *Device) Assertion(
 	}
 
 	return assertion, nil
+}
+
+func (d *Device) CancellableAssertion(
+	rpID string,
+	clientDataHash []byte,
+	credentialIDs [][]byte,
+	pin string,
+	opts *AssertionOpts) (assertFunc func() (*Assertion, error), cancelFunc func(), err error) {
+
+	dev, err := open(d.path)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer close(dev)
+
+	assert := func() (*Assertion, error) {
+		return d.assertionInternal(dev, rpID, clientDataHash, credentialIDs, pin, opts, err)
+	}
+	cancel := func() {
+		C.fido_dev_cancel(dev)
+	}
+	return assert, cancel, nil
 }
 
 // CredentialsInfo ...
