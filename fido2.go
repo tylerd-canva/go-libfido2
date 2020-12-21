@@ -743,9 +743,9 @@ func (d *Device) CancellableAssertion(
 	if err != nil {
 		return nil, nil, err
 	}
-	defer close(dev)
 
 	assert := func() (*Assertion, error) {
+		defer close(dev)
 		return d.assertionInternal(dev, rpID, clientDataHash, credentialIDs, pin, opts, err)
 	}
 	cancel := func() {
@@ -995,6 +995,9 @@ var ErrOperationDenied = errors.New("operation denied")
 var ErrNotFIDO2 = errors.Errorf("not a FIDO2 device")
 
 // ErrOther if other error?
+var ErrInterrupted = errors.Errorf("keep alive cancelled")
+
+// ErrOther if other error?
 var ErrOther = errors.Errorf("other error")
 
 func errFromCode(code C.int) error {
@@ -1043,6 +1046,8 @@ func errFromCode(code C.int) error {
 		return ErrRXInvalidCBOR
 	case C.FIDO_ERR_OPERATION_DENIED:
 		return ErrOperationDenied
+	case C.FIDO_ERR_KEEPALIVE_CANCEL:
+		return ErrInterrupted
 	case C.FIDO_ERR_ERR_OTHER:
 		return ErrOther
 	default:
