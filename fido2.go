@@ -655,14 +655,13 @@ func (d *Device) assertionInternal(
 	if cErr := C.fido_assert_set_clientdata_hash(cAssert, cBytes(clientDataHash), cLen(clientDataHash)); cErr != C.FIDO_OK {
 		return nil, errors.Wrapf(errFromCode(cErr), "failed to set client data hash")
 	}
-	if credentialIDs != nil {
-		for i := 0; i < len(credentialIDs); i++ {
-			credentialID := credentialIDs[i]
-			if cErr := C.fido_assert_allow_cred(cAssert, cBytes(credentialID), cLen(credentialID)); cErr != C.FIDO_OK {
-				return nil, errors.Wrapf(errFromCode(cErr), "failed to set allowed credentials")
-			}
+	for i := 0; i < len(credentialIDs); i++ {
+		credentialID := credentialIDs[i]
+		if cErr := C.fido_assert_allow_cred(cAssert, cBytes(credentialID), cLen(credentialID)); cErr != C.FIDO_OK {
+			return nil, errors.Wrapf(errFromCode(cErr), "failed to set allowed credentials")
 		}
 	}
+
 	if exts := extensionsInt(opts.Extensions); exts > 0 {
 		if cErr := C.fido_assert_set_extensions(cAssert, C.int(exts)); cErr != C.FIDO_OK {
 			return nil, errors.Wrap(errFromCode(cErr), "failed to set extensions")
@@ -690,6 +689,9 @@ func (d *Device) assertionInternal(
 
 	// Get assertion
 	if cErr := C.fido_dev_get_assert(dev, cAssert, cStringOrNil(pin)); cErr != C.FIDO_OK {
+		if cErr == C.FIDO_ERR_KEEPALIVE_CANCEL {
+			return nil, ErrInterrupted
+		}
 		return nil, errors.Wrapf(errFromCode(cErr), "failed to get assertion")
 	}
 
