@@ -18,7 +18,14 @@ import (
 // TODO: fido_assert_verify
 
 func init() {
-	C.fido_init(0) // C.FIDO_DEBUG)
+	InitDebug(false)
+}
+
+func InitDebug(debug bool) {
+	if debug {
+		C.fido_init(C.FIDO_DEBUG)
+	}
+	C.fido_init(0)
 }
 
 // Device ...
