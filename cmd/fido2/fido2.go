@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/mskonovalov/go-libfido2"
+	"github.com/tylerd-canva/go-libfido2"
 )
 
 func main() {
