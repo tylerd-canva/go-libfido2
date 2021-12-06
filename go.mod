@@ -1,4 +1,4 @@
-module github.com/mskonovalov/go-libfido2
+module github.com/tylerd-canva/go-libfido2
 
 go 1.13
 
